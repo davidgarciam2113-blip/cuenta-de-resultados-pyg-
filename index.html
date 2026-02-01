@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PyG — I/II/III/IV (múltiplos 1.000, sin variación)</title>
+  <title>PyG — I/II/III/IV (múltiplos 1.000, financiero, sin variación, imp 25%)</title>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; background: #f6f7fb; color: #111; }
     .wrap { max-width: 1050px; margin: 0 auto; padding: 16px; }
@@ -51,9 +51,7 @@
   <div class="card">
     <h1>Cuenta de Pérdidas y Ganancias — epígrafes exactos</h1>
     <div class="muted">
-      <b>Múltiplos de 1.000</b>. Sin devoluciones/descuentos, <b>sin operaciones financieras</b> (II = 0),
-      y <b>sin variación de existencias</b> (aprovisionamientos = compras).
-      Calcula: <b>I</b>, <b>II</b>, <b>III (BAI)</b>, <b>Impuesto</b> y <b>IV</b>.
+      <b>Múltiplos de 1.000</b>. Sin variación de existencias. <b>Con operaciones financieras</b>. Impuesto fijo: <b>25%</b>.
     </div>
   </div>
 
@@ -78,7 +76,9 @@
         <button id="btnCorregir" class="secondary" disabled>Corregir</button>
       </div>
     </div>
-    <div class="muted" style="margin-top:8px;">Escribe números enteros. Corrección con tolerancia ±1.</div>
+    <div class="muted" style="margin-top:8px;">
+      Escribe números enteros. Todo está en miles. Corrección con tolerancia ±1.
+    </div>
   </div>
 
   <div class="grid">
@@ -88,7 +88,7 @@
         <table id="tablaDatos"></table>
       </div>
       <div class="muted" style="margin-top:10px;">
-        Aquí <b>no hay variación de existencias</b>, así que <b>aprovisionamientos = compras</b>.
+        Aquí <b>no hay variación de existencias</b>, por tanto <b>aprovisionamientos = compras</b>.
       </div>
     </div>
 
@@ -99,12 +99,12 @@
           <tr>
             <td><b>I. Resultado de la explotación</b></td>
             <td style="width:170px;"><input class="square" id="in_I" inputmode="numeric" placeholder="0"></td>
-            <td class="hint">Ingresos explotación − Gastos explotación (sin financiero)</td>
+            <td class="hint">Ingresos explotación − Gastos explotación</td>
           </tr>
           <tr>
             <td><b>II. Resultado financiero</b></td>
             <td><input class="square" id="in_II" inputmode="numeric" placeholder="0"></td>
-            <td class="hint">En este modo: <b>II = 0</b></td>
+            <td class="hint">Ingresos financieros − Gastos financieros</td>
           </tr>
           <tr>
             <td><b>III = I + II. Resultado antes de impuestos (BAI)</b></td>
@@ -112,9 +112,9 @@
             <td class="hint">III = I + II</td>
           </tr>
           <tr>
-            <td><b>Impuesto sobre beneficios</b></td>
+            <td><b>Impuesto sobre beneficios (25%)</b></td>
             <td><input class="square" id="in_IMP" inputmode="numeric" placeholder="0"></td>
-            <td class="hint">Tipo × III (si III &gt; 0; si no, 0)</td>
+            <td class="hint">0,25 × III (si III &gt; 0; si no, 0)</td>
           </tr>
           <tr>
             <td><b>IV = Resultado del ejercicio = III − Impuesto sobre beneficios</b></td>
@@ -142,7 +142,7 @@
 <script>
 const TOL = 1;
 const STEP = 1000;
-const TIPO_IMP = 0.10; // 10%
+const IMP = 0.25;
 
 let caso = null;
 const $ = (id) => document.getElementById(id);
@@ -161,44 +161,62 @@ function parseNum(v){
 function closeEnough(a, b){ return Math.abs(a - b) <= TOL; }
 function fmtGasto(n){ return `(${money(Math.abs(n))})`; }
 
+// Ajusta el resultado financiero para que BAI sea múltiplo de 4.000 (y así el 25% sea múltiplo de 1.000)
+function ajustarFinancieroParaBAI(resExplot, resFin){
+  const bai = resExplot + resFin;
+  const mod = ((bai % 4000) + 4000) % 4000;
+  if (mod === 0) return resFin;
+  // restar 'mod' mantendrá múltiplo de 4.000 (sin romper múltiplos de 1.000 porque mod es múltiplo de 1.000)
+  return resFin - mod;
+}
+
 function generarCaso(){
   const nivel = $("nivel").value;
 
   // Ventas (INCN) sin devoluciones/descuentos
-  const ventas = rndStep(200000, 600000);
+  const ventas = rndStep(200000, 650000);
   const incn = ventas;
 
-  // Aprovisionamientos = Compras (sin variación de existencias)
-  const compras = rndStep(80000, 260000);
+  // Aprovisionamientos = Compras
+  const compras = rndStep(80000, 280000);
   const aprovisionamientos = compras;
 
   // Personal
-  const sueldos = rndStep(20000, 140000);
-  const ssEmpresa = rndStep(10000, 60000);
+  const sueldos = rndStep(20000, 160000);
+  const ssEmpresa = rndStep(10000, 70000);
   const personal = sueldos + ssEmpresa;
 
   // Otros gastos explotación
-  const suministros = rndStep(2000, 20000);
-  const alquileres = rndStep(3000, 30000);
-  const publicidad = rndStep(0, (nivel === "basico") ? 10000 : 20000);
-  const reparaciones = rndStep(0, 15000);
-  const transportes = (nivel === "completo") ? rndStep(0, 12000) : 0;
+  const suministros = rndStep(2000, 22000);
+  const alquileres = rndStep(3000, 32000);
+  const publicidad = rndStep(0, (nivel === "basico") ? 10000 : 25000);
+  const reparaciones = rndStep(0, 18000);
+  const transportes = (nivel === "completo") ? rndStep(0, 15000) : 0;
   const otrosGastos = suministros + alquileres + publicidad + reparaciones + transportes;
 
   // Amortización
-  const amort = rndStep(5000, 45000);
-
-  // Sin financiero
-  const resFin = 0;
+  const amort = rndStep(5000, 50000);
 
   // I
   const resExplot = incn - aprovisionamientos - personal - otrosGastos - amort;
 
+  // Operaciones financieras (múltiplos de 1.000)
+  let ingFin = rndStep(0, 25000);
+  let gasFin = rndStep(0, 30000);
+  let resFin = ingFin - gasFin;
+
+  // Ajuste para que III (BAI) sea múltiplo de 4.000 (y el impuesto 25% sea múltiplo de 1.000)
+  resFin = ajustarFinancieroParaBAI(resExplot, resFin);
+
+  // Mantener consistencia: recalculamos gasFin para respetar ingFin - gasFin = resFin
+  // gasFin = ingFin - resFin, y debe quedar múltiplo de 1.000 (lo estará)
+  gasFin = ingFin - resFin;
+
   // III
   const bai = resExplot + resFin;
 
-  // Impuesto
-  const impuesto = bai > 0 ? bai * TIPO_IMP : 0;
+  // Impuesto 25%
+  const impuesto = bai > 0 ? bai * IMP : 0;
 
   // IV
   const resEj = bai - impuesto;
@@ -210,9 +228,9 @@ function generarCaso(){
     sueldos, ssEmpresa, personal,
     suministros, alquileres, publicidad, reparaciones, transportes, otrosGastos,
     amort,
-    resFin,
+    ingFin, gasFin, resFin,
     resExplot, bai, impuesto, resEj,
-    tipoImp: TIPO_IMP
+    tipoImp: IMP
   };
 
   renderDatos();
@@ -241,9 +259,9 @@ function renderDatos(){
 
   rows.push(["Amortización", money(caso.amort)]);
 
-  rows.push(["Ingresos financieros", "0"]);
-  rows.push(["Gastos financieros", "0"]);
-  rows.push(["Tipo de impuesto", (caso.tipoImp * 100).toFixed(0) + "%"]);
+  rows.push(["Ingresos financieros", money(caso.ingFin)]);
+  rows.push(["Gastos financieros", money(caso.gasFin)]);
+  rows.push(["Tipo de impuesto", "25%"]);
 
   $("tablaDatos").innerHTML = rows.map(([k,v]) => `
     <tr><td>${k}</td><td class="right"><b>${v}</b></td></tr>
@@ -265,7 +283,7 @@ function corregir(){
 
   const expected = {
     in_I: caso.resExplot,
-    in_II: 0,
+    in_II: caso.resFin,
     in_III: caso.bai,
     in_IMP: caso.impuesto,
     in_IV: caso.resEj
@@ -343,17 +361,20 @@ function buildSolucionCompleta(){
   L.push(`   I = ${money(caso.resExplot)}`);
   L.push("");
   L.push("II. RESULTADO FINANCIERO");
-  L.push("   II = 0 (no hay operaciones financieras)");
+  L.push(`   Ingresos financieros:                    ${money(caso.ingFin)}`);
+  L.push(`   Gastos financieros:                      ${fmtGasto(caso.gasFin)}`);
+  L.push(`   II = ${money(caso.ingFin)} − ${money(caso.gasFin)} = ${money(caso.resFin)}`);
   L.push("");
   L.push("III = I + II. RESULTADO ANTES DE IMPUESTOS (BAI)");
-  L.push(`   III = ${money(caso.resExplot)} + 0 = ${money(caso.bai)}`);
+  L.push(`   III = ${money(caso.resExplot)} + ${money(caso.resFin)} = ${money(caso.bai)}`);
   L.push("");
-  L.push("IMPUESTO SOBRE BENEFICIOS");
-  L.push(`   Tipo: ${(caso.tipoImp * 100).toFixed(0)}%`);
+  L.push("IMPUESTO SOBRE BENEFICIOS (25%)");
+  L.push("   Si III > 0, impuesto = 0,25 × III; si III ≤ 0, impuesto = 0.");
   L.push(`   Impuesto = ${money(caso.impuesto)}`);
   L.push("");
   L.push("IV = RESULTADO DEL EJERCICIO = III − IMPUESTO SOBRE BENEFICIOS");
   L.push(`   IV = ${money(caso.bai)} − ${money(caso.impuesto)} = ${money(caso.resEj)}`);
+
   return L.join("\n");
 }
 
@@ -363,6 +384,7 @@ $("btnCorregir").addEventListener("click", corregir);
 
 </body>
 </html>
+
 
 
 
