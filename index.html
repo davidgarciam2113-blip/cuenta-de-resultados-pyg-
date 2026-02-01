@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PyG — Epígrafes exactos (múltiplos 1.000)</title>
+  <title>PyG — I/II/III/IV (múltiplos 1.000, sin financiero)</title>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; background: #f6f7fb; color: #111; }
     .wrap { max-width: 1050px; margin: 0 auto; padding: 16px; }
@@ -51,7 +51,7 @@
   <div class="card">
     <h1>Cuenta de Pérdidas y Ganancias — epígrafes exactos</h1>
     <div class="muted">
-      <b>Importes redondos (múltiplos de 1.000)</b>. Sin devoluciones ni descuentos.
+      <b>Múltiplos de 1.000</b>. <b>Sin devoluciones/descuentos</b> y <b>sin operaciones financieras</b> (por tanto, <b>II = 0</b>).
       Calcula: <b>I</b>, <b>II</b>, <b>III (BAI)</b>, <b>Impuesto</b> y <b>IV</b>.
     </div>
   </div>
@@ -64,11 +64,11 @@
       </div>
 
       <div>
-        <label>Dificultad</label>
+        <label>Nivel</label>
         <select id="nivel">
-          <option value="basico" selected>Básico (sin financiero)</option>
-          <option value="medio">Medio (con financiero sencillo)</option>
-          <option value="completo">Completo (más variedad de gastos + financiero)</option>
+          <option value="basico" selected>Básico</option>
+          <option value="medio">Medio</option>
+          <option value="completo">Completo (más variedad de gastos)</option>
         </select>
       </div>
 
@@ -77,9 +77,7 @@
         <button id="btnCorregir" class="secondary" disabled>Corregir</button>
       </div>
     </div>
-    <div class="muted" style="margin-top:8px;">
-      Escribe números enteros. Corrección con tolerancia ±1.
-    </div>
+    <div class="muted" style="margin-top:8px;">Escribe números enteros. Corrección con tolerancia ±1.</div>
   </div>
 
   <div class="grid">
@@ -106,7 +104,7 @@
           <tr>
             <td><b>II. Resultado financiero</b></td>
             <td><input class="square" id="in_II" inputmode="numeric" placeholder="0"></td>
-            <td class="hint">Ingresos financieros − Gastos financieros</td>
+            <td class="hint">En este modo: <b>II = 0</b> (no hay ingresos/gastos financieros)</td>
           </tr>
           <tr>
             <td><b>III = I + II. Resultado antes de impuestos (BAI)</b></td>
@@ -143,9 +141,9 @@
 
 <script>
 /* ====================== CONFIG ====================== */
-const TOL = 1;          // tolerancia ±1
-const TIPO_IMP = 0.10;  // 10% (impuesto redondo)
-const STEP = 1000;      // TODO múltiplo de 1.000
+const TOL = 1;
+const STEP = 1000;
+const TIPO_IMP = 0.10; // 10% (sigue siendo redondo)
 
 let caso = null;
 const $ = (id) => document.getElementById(id);
@@ -167,18 +165,18 @@ function fmtGasto(n){ return `(${money(Math.abs(n))})`; }
 function generarCaso(){
   const nivel = $("nivel").value;
 
-  // SIN devoluciones ni descuentos
-  const ventas = rndStep(200000, 500000);
+  // Ventas (sin devoluciones ni descuentos)
+  const ventas = rndStep(200000, 600000);
   const incn = ventas;
 
-  // Aprovisionamientos: compras - variación existencias
-  const compras = rndStep(80000, 240000);
+  // Aprovisionamientos
+  const compras = rndStep(80000, 260000);
   const variacion = rndStep(-20000, 20000);
   const aprovisionamientos = compras - variacion;
 
   // Personal
-  const sueldos = rndStep(20000, 120000);
-  const ssEmpresa = rndStep(10000, 50000);
+  const sueldos = rndStep(20000, 140000);
+  const ssEmpresa = rndStep(10000, 60000);
   const personal = sueldos + ssEmpresa;
 
   // Otros gastos explotación
@@ -190,26 +188,20 @@ function generarCaso(){
   const otrosGastos = suministros + alquileres + publicidad + reparaciones + transportes;
 
   // Amortización
-  const amort = rndStep(5000, 40000);
+  const amort = rndStep(5000, 45000);
 
-  // Financiero
-  let ingFin = 0, gasFin = 0;
-  if (nivel === "completo"){
-    ingFin = rndStep(0, 20000);
-    gasFin = rndStep(0, 25000);
-  } else if (nivel === "medio"){
-    ingFin = rndStep(0, 10000);
-    gasFin = rndStep(0, 15000);
-  }
-  const resFin = ingFin - gasFin;
+  // SIN operaciones financieras
+  const ingFin = 0;
+  const gasFin = 0;
+  const resFin = 0;
 
-  // I explotación
+  // I
   const resExplot = incn - aprovisionamientos - personal - otrosGastos - amort;
 
-  // III BAI
-  const bai = resExplot + resFin;
+  // III
+  const bai = resExplot + resFin; // = resExplot
 
-  // Impuesto (redondo)
+  // Impuesto
   const impuesto = bai > 0 ? bai * TIPO_IMP : 0;
 
   // IV
@@ -256,8 +248,8 @@ function renderDatos(){
 
   rows.push(["Amortización", money(caso.amort)]);
 
-  rows.push(["Ingresos financieros", money(caso.ingFin)]);
-  rows.push(["Gastos financieros", money(caso.gasFin)]);
+  rows.push(["Ingresos financieros", "0"]);
+  rows.push(["Gastos financieros", "0"]);
   rows.push(["Tipo de impuesto", (caso.tipoImp * 100).toFixed(0) + "%"]);
 
   $("tablaDatos").innerHTML = rows.map(([k,v]) => `
@@ -280,7 +272,7 @@ function corregir(){
 
   const expected = {
     in_I: caso.resExplot,
-    in_II: caso.resFin,
+    in_II: 0,
     in_III: caso.bai,
     in_IMP: caso.impuesto,
     in_IV: caso.resEj
@@ -319,7 +311,6 @@ function corregir(){
     <div class="pill">Aciertos: ${ok}/${total} (${pctOk.toFixed(1)}%)</div>
     <div class="pill">Errores: ${fallos}/${total} (${pctFail.toFixed(1)}%)</div>
     <div class="pill">Nota: ${nota.toFixed(2)} / 10</div>
-    <div class="muted" style="margin-top:10px;">Estructura correcta completa (ítems + cálculos) a continuación.</div>
   `;
 
   $("solucionTxt").textContent = buildSolucionCompleta();
@@ -367,17 +358,14 @@ function buildSolucionCompleta(){
   L.push(`   I = ${money(caso.resExplot)}`);
   L.push("");
   L.push("II. RESULTADO FINANCIERO");
-  L.push("   (Ingresos financieros − Gastos financieros)");
-  L.push(`   Ingresos financieros:                    ${money(caso.ingFin)}`);
-  L.push(`   Gastos financieros:                      ${fmtGasto(caso.gasFin)}`);
-  L.push(`   II = ${money(caso.ingFin)} − ${money(caso.gasFin)} = ${money(caso.resFin)}`);
+  L.push("   (No hay operaciones financieras en este ejercicio)");
+  L.push("   II = 0");
   L.push("");
   L.push("III = I + II. RESULTADO ANTES DE IMPUESTOS (BAI)");
-  L.push(`   III = ${money(caso.resExplot)} + ${money(caso.resFin)} = ${money(caso.bai)}`);
+  L.push(`   III = ${money(caso.resExplot)} + 0 = ${money(caso.bai)}`);
   L.push("");
   L.push("IMPUESTO SOBRE BENEFICIOS");
   L.push(`   Tipo: ${(caso.tipoImp * 100).toFixed(0)}%`);
-  L.push("   Si hay beneficios (III > 0), se paga impuesto; si hay pérdidas, impuesto = 0.");
   L.push(`   Impuesto = ${money(caso.impuesto)}`);
   L.push("");
   L.push("IV = RESULTADO DEL EJERCICIO = III − IMPUESTO SOBRE BENEFICIOS");
@@ -386,11 +374,11 @@ function buildSolucionCompleta(){
   return L.join("\n");
 }
 
-/* =================== Eventos =================== */
 $("btnGenerar").addEventListener("click", generarCaso);
 $("btnCorregir").addEventListener("click", corregir);
 </script>
 
 </body>
 </html>
+
 
