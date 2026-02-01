@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PyG — Epígrafes exactos (I-II-III-IV)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; background: #f6f7fb; color: #111; }
+    .wrap { max-width: 1050px; margin: 0 auto; padding: 16px; }
+    .card { background: white; border-radius: 14px; padding: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.06); margin: 12px 0; }
+    h1 { font-size: 20px; margin: 0 0 6px; }
+    h2 { font-size: 16px; margin: 0 0 10px; }
+    .muted { color: #555; font-size: 13px; }
+    label { font-weight: 900; font-size: 13px; display:block; margin-bottom: 6px; }
+
+    input, select, button {
+      font-size: 16px; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid #d8dbe6; width: 100%; box-sizing: border-box;
+    }
+    button { border: 0; background: #2563eb; color: white; font-weight: 900; cursor: pointer; }
+    button.secondary { background: #111827; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+
+    .row { display:grid; gap: 10px; grid-template-columns: 1fr; }
+    @media (min-width: 900px){ .row { grid-template-columns: 1.2fr 1fr 1fr; } }
+
+    .grid { display:grid; gap: 12px; }
+    @media (min-width: 900px){ .grid { grid-template-columns: 1fr 1fr; } }
+
+    .box { border: 1px solid #eef0f7; border-radius: 12px; padding: 12px; background: #fafbff; }
+    .pill { display:inline-block; padding: 4px 10px; border-radius: 999px; background:#eef2ff; color:#1e40af; font-weight:900; font-size: 12px; margin-right: 8px; }
+
+    table { width:100%; border-collapse: collapse; }
+    td { padding: 8px 6px; border-bottom: 1px solid #e9ecf5; vertical-align: top; }
+    td.right { text-align:right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .hint { font-size: 12px; color: #555; }
+
+    .result { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #0b1220; color: #e5e7eb; padding: 12px; border-radius: 12px; overflow:auto;
+    }
+
+    .square { border: 2px solid #111827; border-radius: 10px; padding: 10px 12px; background: #fff; }
+    .ok { border-color: #16a34a !important; }
+    .bad { border-color: #dc2626 !important; }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <h1>Cuenta de Pérdidas y Ganancias — epígrafes exactos</h1>
+    <div class="muted">
+      Calcula y escribe en los cuadros: <b>I</b>, <b>II</b>, <b>III (BAI)</b>, <b>Impuesto</b> y <b>IV</b>.
+      En la solución, los <b>gastos aparecen entre paréntesis</b> (restan).
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>Nombre y apellidos</label>
+        <input id="alumno" placeholder="Ej: Laura García López" autocomplete="name">
+      </div>
+
+      <div>
+        <label>Dificultad</label>
+        <select id="nivel">
+          <option value="basico" selected>Básico (sin devoluciones/descuentos)</option>
+          <option value="medio">Medio (con devoluciones/descuentos)</option>
+          <option value="completo">Completo (más variedad de gastos + financiero)</option>
+        </select>
+      </div>
+
+      <div style="display:grid; gap:10px;">
+        <button id="btnGenerar">Generar caso</button>
+        <button id="btnCorregir" class="secondary" disabled>Corregir</button>
+      </div>
+    </div>
+    <div class="muted" style="margin-top:8px;">Puedes usar coma o punto. Corrección con tolerancia ±0,01.</div>
+  </div>
+
+  <div class="grid">
+    <div class="card" id="zonaDatos" style="display:none;">
+      <h2>Datos del caso</h2>
+      <div class="box">
+        <table id="tablaDatos"></table>
+      </div>
+      <div class="muted" style="margin-top:10px;">
+        <b>Aprovisionamientos (consumo)</b> = Compras − Variación de existencias.
+        (Si la variación es positiva, reduce el consumo; si es negativa, lo aumenta.)
+      </div>
+    </div>
+
+    <div class="card" id="zonaInputs" style="display:none;">
+      <h2>Resultados solicitados (epígrafes exactos)</h2>
+      <div class="box">
+        <table>
+          <tr>
+            <td><b>I. Resultado de la explotación</b></td>
+            <td style="width:170px;"><input class="square" id="in_I" inputmode="decimal" placeholder="0,00"></td>
+            <td class="hint">Ingresos de explotación − Gastos de explotación (sin financiero)</td>
+          </tr>
+          <tr>
+            <td><b>II. Resultado financiero</b></td>
+            <td><input class="square" id="in_II" inputmode="decimal" placeholder="0,00"></td>
+            <td class="hint">Ingresos financieros − Gastos financieros</td>
+          </tr>
+          <tr>
+            <td><b>III = I + II. Resultado antes de impuestos (BAI)</b></td>
+            <td><input class="square" id="in_III" inputmode="decimal" placeholder="0,00"></td>
+            <td class="hint">III = I + II</td>
+          </tr>
+          <tr>
+            <td><b>Impuesto sobre beneficios</b></td>
+            <td><input class="square" id="in_IMP" inputmode="decimal" placeholder="0,00"></td>
+            <td class="hint">Tipo × III (si III &gt; 0; si no, 0)</td>
+          </tr>
+          <tr>
+            <td><b>IV = Resultado del ejercicio = III − Impuesto sobre beneficios</b></td>
+            <td><input class="square" id="in_IV" inputmode="decimal" placeholder="0,00"></td>
+            <td class="hint">IV = III − Impuesto</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="zonaResultado" style="display:none;">
+    <h2>Corrección</h2>
+    <div id="resumen"></div>
+    <div style="height:10px;"></div>
+
+    <div class="box">
+      <h3 style="margin:0 0 8px;">Estructura correcta completa (ítems + cálculos)</h3>
+      <div class="result" id="solucionTxt"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ====================== CONFIG ====================== */
+const TOL = 0.01;
+const TIPO_IMP = 0.25; // 25% (cámbialo si quieres)
+
+let caso = null;
+const $ = (id) => document.getElementById(id);
+
+function rndInt(min, max){ return Math.floor(Math.random() * (max - min + 1)) + min; }
+function money(n){ return (Math.round(n * 100) / 100).toFixed(2); }
+function parseNum(v){
+  const x = (v || "").toString().replace(",", ".").trim();
+  const n = Number(x);
+  return Number.isFinite(n) ? n : NaN;
+}
+function closeEnough(a, b){ return Math.abs(a - b) <= TOL; }
+function fmtGasto(n){ return `(${money(Math.abs(n))})`; } // gastos en paréntesis
+
+function generarCaso(){
+  const nivel = $("nivel").value;
+
+  // INGRESOS DE EXPLOTACIÓN
+  const ventas = rndInt(180000, 420000);
+  let devol = 0, desc = 0;
+  if (nivel !== "basico"){
+    devol = rndInt(0, Math.round(ventas * 0.06));
+    desc  = rndInt(0, Math.round(ventas * 0.05));
+  }
+  const incn = ventas - devol - desc;
+
+  // APROVISIONAMIENTOS: compras - variación existencias
+  const compras = rndInt(70000, 210000);
+  const variacion = rndInt(-20000, 20000);
+  const aprovisionamientos = compras - variacion;
+
+  // GASTOS DE PERSONAL
+  const sueldos = rndInt(20000, 90000);
+  const ssEmpresa = rndInt(8000, 35000);
+  const personal = sueldos + ssEmpresa;
+
+  // OTROS GASTOS DE EXPLOTACIÓN (variedad)
+  const suministros = rndInt(2000, 18000);
+  const alquileres = rndInt(3000, 24000);
+  const publicidad = (nivel === "basico") ? rndInt(0, 6000) : rndInt(0, 15000);
+  const reparaciones = rndInt(0, 12000);
+  const transportes = (nivel === "completo") ? rndInt(0, 9000) : 0;
+  const otrosGastos = suministros + alquileres + publicidad + reparaciones + transportes;
+
+  // AMORTIZACIÓN
+  const amort = rndInt(4000, 35000);
+
+  // FINANCIERO
+  let ingFin = 0, gasFin = 0;
+  if (nivel === "completo"){
+    ingFin = rndInt(0, 14000);
+    gasFin = rndInt(0, 22000);
+  } else if (nivel === "medio"){
+    ingFin = rndInt(0, 8000);
+    gasFin = rndInt(0, 12000);
+  }
+  const resFin = ingFin - gasFin;
+
+  // I. Resultado explotación (sin financiero)
+  const resExplot = incn - aprovisionamientos - personal - otrosGastos - amort;
+
+  // III. BAI
+  const bai = resExplot + resFin;
+
+  // Impuesto
+  const impuesto = bai > 0 ? bai * TIPO_IMP : 0;
+
+  // IV. Resultado ejercicio
+  const resEj = bai - impuesto;
+
+  caso = {
+    nivel,
+    ventas, devol, desc, incn,
+    compras, variacion, aprovisionamientos,
+    sueldos, ssEmpresa, personal,
+    suministros, alquileres, publicidad, reparaciones, transportes, otrosGastos,
+    amort,
+    ingFin, gasFin, resFin,
+    resExplot, bai, impuesto, resEj,
+    tipoImp: TIPO_IMP
+  };
+
+  renderDatos();
+  resetInputs();
+  $("zonaDatos").style.display = "";
+  $("zonaInputs").style.display = "";
+  $("zonaResultado").style.display = "none";
+  $("btnCorregir").disabled = false;
+}
+
+function renderDatos(){
+  const rows = [];
+  rows.push(["Ventas", money(caso.ventas)]);
+  rows.push(["(-) Devoluciones", money(caso.devol)]);
+  rows.push(["(-) Descuentos", money(caso.desc)]);
+  rows.push(["Importe neto cifra de negocios (INCN)", money(caso.incn)]);
+
+  rows.push(["Compras", money(caso.compras)]);
+  rows.push(["Variación de existencias", money(caso.variacion)]);
+  rows.push(["Aprovisionamientos (consumo)", money(caso.aprovisionamientos)]);
+
+  rows.push(["Sueldos y salarios", money(caso.sueldos)]);
+  rows.push(["Seguridad Social (empresa)", money(caso.ssEmpresa)]);
+  rows.push(["Gastos de personal (total)", money(caso.personal)]);
+
+  rows.push(["Suministros", money(caso.suministros)]);
+  rows.push(["Alquileres", money(caso.alquileres)]);
+  rows.push(["Publicidad", money(caso.publicidad)]);
+  rows.push(["Reparaciones y conservación", money(caso.reparaciones)]);
+  rows.push(["Transportes", money(caso.transportes)]);
+  rows.push(["Otros gastos de explotación (total)", money(caso.otrosGastos)]);
+
+  rows.push(["Amortización", money(caso.amort)]);
+
+  rows.push(["Ingresos financieros", money(caso.ingFin)]);
+  rows.push(["Gastos financieros", money(caso.gasFin)]);
+  rows.push(["Tipo de impuesto", (caso.tipoImp * 100).toFixed(0) + "%"]);
+
+  $("tablaDatos").innerHTML = rows.map(([k,v]) => `
+    <tr><td>${k}</td><td class="right"><b>${v}</b></td></tr>
+  `).join("");
+}
+
+function resetInputs(){
+  ["in_I","in_II","in_III","in_IMP","in_IV"].forEach(id => {
+    const el = $(id);
+    el.value = "";
+    el.classList.remove("ok","bad");
+  });
+}
+
+function corregir(){
+  const alumno = $("alumno").value.trim();
+  if (alumno.length < 3){ alert("Escribe nombre y apellidos."); return; }
+  if (!caso){ alert("Primero genera un caso."); return; }
+
+  const expected = {
+    in_I: caso.resExplot,
+    in_II: caso.resFin,
+    in_III: caso.bai,
+    in_IMP: caso.impuesto,
+    in_IV: caso.resEj
+  };
+
+  const keys = Object.keys(expected);
+  let ok = 0;
+
+  keys.forEach(k => {
+    const input = $(k);
+    const val = parseNum(input.value);
+    const exp = expected[k];
+
+    if (!Number.isFinite(val)){
+      input.classList.add("bad"); input.classList.remove("ok");
+      return;
+    }
+    if (closeEnough(val, exp)){
+      ok++;
+      input.classList.add("ok"); input.classList.remove("bad");
+    } else {
+      input.classList.add("bad"); input.classList.remove("ok");
+    }
+  });
+
+  const total = keys.length;
+  const fallos = total - ok;
+  const pctOk = (ok / total) * 100;
+  const pctFail = (fallos / total) * 100;
+  const nota = Math.round((ok / total) * 10 * 100) / 100;
+
+  $("zonaResultado").style.display = "";
+  $("resumen").innerHTML = `
+    <div class="pill">Alumno: ${alumno}</div>
+    <div style="height:8px"></div>
+    <div class="pill">Aciertos: ${ok}/${total} (${pctOk.toFixed(1)}%)</div>
+    <div class="pill">Errores: ${fallos}/${total} (${pctFail.toFixed(1)}%)</div>
+    <div class="pill">Nota: ${nota.toFixed(2)} / 10</div>
+    <div class="muted" style="margin-top:10px;">Estructura correcta completa (ítems + cálculos) a continuación.</div>
+  `;
+
+  $("solucionTxt").textContent = buildSolucionCompleta();
+  $("zonaResultado").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+function buildSolucionCompleta(){
+  const L = [];
+  L.push("LA ESTRUCTURA DE LA CUENTA DE PÉRDIDAS Y GANANCIAS (CORRECTA)");
+  L.push("=============================================================");
+  L.push("");
+  L.push("I. RESULTADO DE LA EXPLOTACIÓN");
+  L.push("   (Ingresos y gastos de la actividad de la empresa, excepto operaciones financieras)");
+  L.push("");
+  L.push("   INGRESOS DE EXPLOTACIÓN");
+  L.push(`     Ventas:                               ${money(caso.ventas)}`);
+  L.push(`     (-) Devoluciones:                     ${fmtGasto(caso.devol)}`);
+  L.push(`     (-) Descuentos:                       ${fmtGasto(caso.desc)}`);
+  L.push(`     Importe neto cifra de negocios:       ${money(caso.incn)}`);
+  L.push("");
+  L.push("   GASTOS DE EXPLOTACIÓN");
+  L.push("     Aprovisionamientos (consumo) = Compras − Variación de existencias");
+  L.push(`       Compras:                            ${fmtGasto(caso.compras)}`);
+  // La variación se muestra con signo (si es +, reduce; si es -, aumenta consumo)
+  const varTxt = (caso.variacion >= 0) ? money(caso.variacion) : `(${money(Math.abs(caso.variacion))})`;
+  L.push(`       Variación de existencias:           ${varTxt}`);
+  L.push(`       Aprovisionamientos (consumo):       ${fmtGasto(caso.aprovisionamientos)}`);
+  L.push("");
+  L.push("     Gastos de personal");
+  L.push(`       Sueldos y salarios:                 ${fmtGasto(caso.sueldos)}`);
+  L.push(`       Seguridad Social (empresa):         ${fmtGasto(caso.ssEmpresa)}`);
+  L.push(`       Total personal:                     ${fmtGasto(caso.personal)}`);
+  L.push("");
+  L.push("     Otros gastos de explotación");
+  L.push(`       Suministros:                        ${fmtGasto(caso.suministros)}`);
+  L.push(`       Alquileres:                         ${fmtGasto(caso.alquileres)}`);
+  L.push(`       Publicidad:                         ${fmtGasto(caso.publicidad)}`);
+  L.push(`       Reparaciones y conservación:         ${fmtGasto(caso.reparaciones)}`);
+  L.push(`       Transportes:                        ${fmtGasto(caso.transportes)}`);
+  L.push(`       Total otros gastos:                 ${fmtGasto(caso.otrosGastos)}`);
+  L.push("");
+  L.push(`     Amortización:                         ${fmtGasto(caso.amort)}`);
+  L.push("");
+  L.push("   I = Ingresos de explotación − Gastos de explotación");
+  L.push(`   I = ${money(caso.incn)} − ${money(caso.aprovisionamientos)} − ${money(caso.personal)} − ${money(caso.otrosGastos)} − ${money(caso.amort)}`);
+  L.push(`   I = ${money(caso.resExplot)}`);
+  L.push("");
+  L.push("II. RESULTADO FINANCIERO");
+  L.push("   (Ingresos financieros obtenidos por inversiones financieras − gastos financieros / intereses)");
+  L.push(`   Ingresos financieros:                    ${money(caso.ingFin)}`);
+  L.push(`   Gastos financieros:                      ${fmtGasto(caso.gasFin)}`);
+  L.push(`   II = ${money(caso.ingFin)} − ${money(caso.gasFin)} = ${money(caso.resFin)}`);
+  L.push("");
+  L.push("III = I + II. RESULTADO ANTES DE IMPUESTOS (BAI)");
+  L.push(`   III = ${money(caso.resExplot)} + ${money(caso.resFin)} = ${money(caso.bai)}`);
+  L.push("");
+  L.push("IMPUESTO SOBRE BENEFICIOS");
+  L.push(`   Tipo: ${(caso.tipoImp * 100).toFixed(0)}%`);
+  L.push("   Si hay beneficios (III > 0), se paga impuesto; si hay pérdidas, impuesto = 0.");
+  L.push(`   Impuesto = ${money(caso.impuesto)}`);
+  L.push("");
+  L.push("IV = RESULTADO DEL EJERCICIO = III − IMPUESTO SOBRE BENEFICIOS");
+  L.push(`   IV = ${money(caso.bai)} − ${money(caso.impuesto)} = ${money(caso.resEj)}`);
+
+  return L.join("\n");
+}
+
+/* =================== Eventos =================== */
+$("btnGenerar").addEventListener("click", generarCaso);
+$("btnCorregir").addEventListener("click", corregir);
+</script>
+
+</body>
+</html>
