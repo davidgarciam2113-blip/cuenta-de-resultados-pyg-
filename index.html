@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PyG — I/II/III/IV (múltiplos 1.000, sin financiero)</title>
+  <title>PyG — I/II/III/IV (múltiplos 1.000, sin variación)</title>
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 0; background: #f6f7fb; color: #111; }
     .wrap { max-width: 1050px; margin: 0 auto; padding: 16px; }
@@ -51,7 +51,8 @@
   <div class="card">
     <h1>Cuenta de Pérdidas y Ganancias — epígrafes exactos</h1>
     <div class="muted">
-      <b>Múltiplos de 1.000</b>. <b>Sin devoluciones/descuentos</b> y <b>sin operaciones financieras</b> (por tanto, <b>II = 0</b>).
+      <b>Múltiplos de 1.000</b>. Sin devoluciones/descuentos, <b>sin operaciones financieras</b> (II = 0),
+      y <b>sin variación de existencias</b> (aprovisionamientos = compras).
       Calcula: <b>I</b>, <b>II</b>, <b>III (BAI)</b>, <b>Impuesto</b> y <b>IV</b>.
     </div>
   </div>
@@ -87,8 +88,7 @@
         <table id="tablaDatos"></table>
       </div>
       <div class="muted" style="margin-top:10px;">
-        <b>Aprovisionamientos (consumo)</b> = Compras − Variación de existencias.
-        (Si la variación es positiva, reduce el consumo; si es negativa, lo aumenta.)
+        Aquí <b>no hay variación de existencias</b>, así que <b>aprovisionamientos = compras</b>.
       </div>
     </div>
 
@@ -104,7 +104,7 @@
           <tr>
             <td><b>II. Resultado financiero</b></td>
             <td><input class="square" id="in_II" inputmode="numeric" placeholder="0"></td>
-            <td class="hint">En este modo: <b>II = 0</b> (no hay ingresos/gastos financieros)</td>
+            <td class="hint">En este modo: <b>II = 0</b></td>
           </tr>
           <tr>
             <td><b>III = I + II. Resultado antes de impuestos (BAI)</b></td>
@@ -140,10 +140,9 @@
 </div>
 
 <script>
-/* ====================== CONFIG ====================== */
 const TOL = 1;
 const STEP = 1000;
-const TIPO_IMP = 0.10; // 10% (sigue siendo redondo)
+const TIPO_IMP = 0.10; // 10%
 
 let caso = null;
 const $ = (id) => document.getElementById(id);
@@ -165,14 +164,13 @@ function fmtGasto(n){ return `(${money(Math.abs(n))})`; }
 function generarCaso(){
   const nivel = $("nivel").value;
 
-  // Ventas (sin devoluciones ni descuentos)
+  // Ventas (INCN) sin devoluciones/descuentos
   const ventas = rndStep(200000, 600000);
   const incn = ventas;
 
-  // Aprovisionamientos
+  // Aprovisionamientos = Compras (sin variación de existencias)
   const compras = rndStep(80000, 260000);
-  const variacion = rndStep(-20000, 20000);
-  const aprovisionamientos = compras - variacion;
+  const aprovisionamientos = compras;
 
   // Personal
   const sueldos = rndStep(20000, 140000);
@@ -190,16 +188,14 @@ function generarCaso(){
   // Amortización
   const amort = rndStep(5000, 45000);
 
-  // SIN operaciones financieras
-  const ingFin = 0;
-  const gasFin = 0;
+  // Sin financiero
   const resFin = 0;
 
   // I
   const resExplot = incn - aprovisionamientos - personal - otrosGastos - amort;
 
   // III
-  const bai = resExplot + resFin; // = resExplot
+  const bai = resExplot + resFin;
 
   // Impuesto
   const impuesto = bai > 0 ? bai * TIPO_IMP : 0;
@@ -210,11 +206,11 @@ function generarCaso(){
   caso = {
     nivel,
     ventas, incn,
-    compras, variacion, aprovisionamientos,
+    compras, aprovisionamientos,
     sueldos, ssEmpresa, personal,
     suministros, alquileres, publicidad, reparaciones, transportes, otrosGastos,
     amort,
-    ingFin, gasFin, resFin,
+    resFin,
     resExplot, bai, impuesto, resEj,
     tipoImp: TIPO_IMP
   };
@@ -230,10 +226,7 @@ function generarCaso(){
 function renderDatos(){
   const rows = [];
   rows.push(["Ventas (INCN)", money(caso.ventas)]);
-
-  rows.push(["Compras", money(caso.compras)]);
-  rows.push(["Variación de existencias", money(caso.variacion)]);
-  rows.push(["Aprovisionamientos (consumo)", money(caso.aprovisionamientos)]);
+  rows.push(["Compras (Aprovisionamientos)", money(caso.compras)]);
 
   rows.push(["Sueldos y salarios", money(caso.sueldos)]);
   rows.push(["Seguridad Social (empresa)", money(caso.ssEmpresa)]);
@@ -322,21 +315,13 @@ function buildSolucionCompleta(){
   L.push("LA ESTRUCTURA DE LA CUENTA DE PÉRDIDAS Y GANANCIAS (CORRECTA)");
   L.push("=============================================================");
   L.push("");
-  L.push("Ingresos (signo +) / Gastos (en paréntesis para indicar que restan)");
-  L.push("");
-
   L.push("I. RESULTADO DE LA EXPLOTACIÓN");
-  L.push("   (Ingresos y gastos de la actividad de la empresa, excepto operaciones financieras)");
   L.push("");
   L.push("   INGRESOS DE EXPLOTACIÓN");
   L.push(`     Ventas (INCN):                        ${money(caso.ventas)}`);
   L.push("");
   L.push("   GASTOS DE EXPLOTACIÓN");
-  L.push("     Aprovisionamientos (consumo) = Compras − Variación de existencias");
-  L.push(`       Compras:                            ${fmtGasto(caso.compras)}`);
-  const varTxt = (caso.variacion >= 0) ? money(caso.variacion) : `(${money(Math.abs(caso.variacion))})`;
-  L.push(`       Variación de existencias:           ${varTxt}`);
-  L.push(`       Aprovisionamientos (consumo):       ${fmtGasto(caso.aprovisionamientos)}`);
+  L.push(`     Aprovisionamientos (Compras):         ${fmtGasto(caso.compras)}`);
   L.push("");
   L.push("     Gastos de personal");
   L.push(`       Sueldos y salarios:                 ${fmtGasto(caso.sueldos)}`);
@@ -358,8 +343,7 @@ function buildSolucionCompleta(){
   L.push(`   I = ${money(caso.resExplot)}`);
   L.push("");
   L.push("II. RESULTADO FINANCIERO");
-  L.push("   (No hay operaciones financieras en este ejercicio)");
-  L.push("   II = 0");
+  L.push("   II = 0 (no hay operaciones financieras)");
   L.push("");
   L.push("III = I + II. RESULTADO ANTES DE IMPUESTOS (BAI)");
   L.push(`   III = ${money(caso.resExplot)} + 0 = ${money(caso.bai)}`);
@@ -370,7 +354,6 @@ function buildSolucionCompleta(){
   L.push("");
   L.push("IV = RESULTADO DEL EJERCICIO = III − IMPUESTO SOBRE BENEFICIOS");
   L.push(`   IV = ${money(caso.bai)} − ${money(caso.impuesto)} = ${money(caso.resEj)}`);
-
   return L.join("\n");
 }
 
